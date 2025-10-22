@@ -1,0 +1,72 @@
+# ==========================
+# Python / Virtual Environment
+# ==========================
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Environment and IDE settings
+.env
+*.env
+.venv
+.idea/
+.vscode/
+*.code-workspace
+
+# ==========================
+# Jupyter Notebooks
+# ==========================
+.ipynb_checkpoints/
+.notebook/
+notebooks/.ipynb_checkpoints/
+
+# ==========================
+# Data Files (optional - comment out if you track small test data)
+# ==========================
+data/raw/
+data/interim/
+data/processed/
+*.csv
+*.xes
+*.xlsx
+*.xls
+*.json
+*.zip
+
+# ==========================
+# LaTeX / Report Files
+# ==========================
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.log
+report/*.out
+report/*.synctex.gz
+report/*.toc
+report/*.lof
+report/*.lot
+report/*.nav
+report/*.snm
+report/*.vrb
+report/*.pdf  # comment this out if you want the final PDF version tracked
+
+# ==========================
+# OS Generated Files
+# ==========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==========================
+# Miscellaneous
+# ==========================
+*.bak
+*.tmp
+*.swp
+*.swo
