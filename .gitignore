@@ -27,7 +27,6 @@ notebooks/.ipynb_checkpoints/
 # ==========================
 # Data Files (optional - comment out if you track small test data)
 # ==========================
-data
 data/raw/
 data/interim/
 data/processed/
@@ -37,6 +36,7 @@ data/processed/
 *.xls
 *.json
 *.zip
+.~lock.*#
 
 # ==========================
 # LaTeX / Report Files
