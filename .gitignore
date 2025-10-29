@@ -33,6 +33,7 @@ data/processed/
 *.xes
 *.xlsx
 *.xls
+*.csv
 *.json
 *.zip
 .~lock.*#
