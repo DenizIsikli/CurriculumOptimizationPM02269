@@ -1,7 +1,9 @@
 import re
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from typing import Optional
+
 from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
