@@ -1,15 +1,17 @@
 import os
-from pm4py.algo.discovery.heuristics.algorithm import apply_heu
+
+from pm4py import discover_petri_net_alpha, discover_petri_net_inductive, discover_heuristics_net
+from pm4py.algo.discovery.inductive import factory as inductive_factory
+
+from pm4py.objects.log.util import sampling
+from pm4py.statistics.traces.generic.log import case_statistics
+
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
-from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
-from pm4py.statistics.traces.generic.log import case_statistics
-from pm4py.objects.log.util import sampling
+
 from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.algo.discovery.inductive.algorithm import apply as apply_inductive_miner, apply_tree
+from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 
-
-from data_preparation import DataPreparer
 from config import MODEL_PATH, SAMPLE_FRACTION
 
 
@@ -51,17 +53,22 @@ class ProcessDiscovery:
         print(f"  Variants: {len(case_statistics.get_variant_statistics(self.event_log, parameters=parameters))}")
         print("-" * 60)
 
+    def _run_alpha_miner(self):
+        """Apply Alpha Miner"""
+        print("Running Alpha Miner")
+        net, im, fm = discover_petri_net_alpha(self.event_log)
+        self._export_and_visualize(net, im, fm, "alpha_miner")
+
     def _run_inductive_miner(self):
         """Apply Inductive Miner"""
-
         print("Running Inductive Miner")
-        net, im, fm = apply_inductive_miner(self.event_log)
+        net, im, fm = discover_petri_net_inductive(self.event_log)
         self._export_and_visualize(net, im, fm, "inductive_miner")
 
     def _run_heuristics_miner(self):
         """Apply Heuristics Miner"""
         print("Running Heuristics Miner")
-        net, im, fm = apply_heu(self.event_log)
+        net, im, fm = discover_heuristics_net(self.event_log)
         self._export_and_visualize(net, im, fm, "heuristics_miner")
 
     def _export_and_visualize(self, net, im, fm, name):
@@ -77,14 +84,13 @@ class ProcessDiscovery:
 
     def _visualize_process_tree(self):
         """Generate process tree for interpretability"""
-        tree = apply_tree(self.event_log)
+        tree = inductive_factory.apply_tree(self.event_log)
         gviz_tree = pt_visualizer.apply(tree)
         output_path = os.path.join(self.output_dir, "process_tree.png")
         pt_visualizer.save(gviz_tree, output_path)
         print(f"Process tree saved to {output_path}")
 
+
 if __name__ == "__main__":
-    print("Starting Process Discovery Pipeline")
     run = ProcessDiscovery()
     run.run()
-    print("Process discovery completed successfully")
