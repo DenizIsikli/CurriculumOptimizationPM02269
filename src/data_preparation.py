@@ -25,8 +25,7 @@ class DataPreparer:
         self.xes_path = xes_path
         self.df: Optional[pd.DataFrame] = None
 
-    # Public API
-    def prepare(self):
+    def run(self):
         """Prepare dataset and return a PM4Py EventLog"""
         self._load_raw_data()
         self._clean_and_format()
@@ -72,7 +71,6 @@ class DataPreparer:
 
         self.df = self.df[[c for c in rename_map.values() if c in self.df.columns]]
 
-    # Cleaning and Formatting
     def _clean_and_format(self) -> None:
         """Clean and format the dataset"""
         print("Cleaning and formatting data")
@@ -223,5 +221,5 @@ class DataPreparer:
 
 
 if __name__ == "__main__":
-    preparer = DataPreparer()
-    preparer.prepare()
+    run = DataPreparer()
+    run.run()
