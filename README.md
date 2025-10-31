@@ -33,7 +33,7 @@ The project leverages **process discovery**, **conformance checking**, and **per
 ## 🎯 Objectives
 
 - Identify process bottlenecks and inefficiencies within student curricula.  
-- Compare the effectiveness of different **process mining algorithms** (e.g., Inductive Miner, Heuristics Miner).  
+- Compare the effectiveness of different **process mining algorithms** (e.g., Alpha Miner, Inductive Miner, Heuristics Miner).  
 - Analyze correlations between **curriculum structure**, **course sequencing**, and **student performance**.  
 - Apply **conformance checking** to compare actual study paths with the official curriculum model.  
 - Provide **data-driven insights** to support educational planning and curriculum design.
@@ -50,5 +50,4 @@ The project leverages **process discovery**, **conformance checking**, and **per
 ---
 
 ## 📄 Repository Structure
-
 
