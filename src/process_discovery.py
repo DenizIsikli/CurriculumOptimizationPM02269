@@ -48,9 +48,9 @@ class ProcessDiscovery:
 
         print("Event Log Summary")
         print(f"  Number of traces (students): {len(self.event_log)}")
-        print(f"  Total events: {sum(len(t) for t in self.event_log)}")
-        print(f"  Unique activities: {len(set(e[activity_key] for t in self.event_log for e in t))}")
-        print(f"  Variants: {len(case_statistics.get_variant_statistics(self.event_log, parameters=parameters))}")
+        print(f"  Total events (Total course attempts): {sum(len(t) for t in self.event_log)}")
+        print(f"  Unique activities (Different courses taken): {len(set(e[activity_key] for t in self.event_log for e in t))}")
+        print(f"  Variants (Unique paths students took through the process): {len(case_statistics.get_variant_statistics(self.event_log, parameters=parameters))}")
         print("-" * 60)
 
     def _run_alpha_miner(self):
