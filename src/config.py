@@ -9,7 +9,7 @@ PROCESSED_DATA_PATH = os.path.join(DATA_PATH, "processed_log.csv")
 SAMPLED_DATA_PATH = os.path.join(DATA_PATH, "sampled_log.csv")
 XES_OUTPUT_PATH = os.path.join(DATA_PATH, "sampled_event_log.xes")
 
-SAMPLE_FRACTION = 0.10
+SAMPLE_FRACTION = 0.2
 
 # ======================================
 # model_training.py Configurations
