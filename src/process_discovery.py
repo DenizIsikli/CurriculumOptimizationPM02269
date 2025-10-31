@@ -1,7 +1,7 @@
 import os
 
 from pm4py import discover_petri_net_alpha, discover_petri_net_inductive, discover_heuristics_net
-from pm4py.algo.discovery.inductive import factory as inductive_factory
+from pm4py import discover_process_tree_inductive as inductive_factory
 
 from pm4py.objects.log.util import sampling
 from pm4py.statistics.traces.generic.log import case_statistics
@@ -84,7 +84,7 @@ class ProcessDiscovery:
 
     def _visualize_process_tree(self):
         """Generate process tree for interpretability"""
-        tree = inductive_factory.apply_tree(self.event_log)
+        tree = inductive_tree.apply_tree(self.event_log)
         gviz_tree = pt_visualizer.apply(tree)
         output_path = os.path.join(self.output_dir, "process_tree.png")
         pt_visualizer.save(gviz_tree, output_path)
