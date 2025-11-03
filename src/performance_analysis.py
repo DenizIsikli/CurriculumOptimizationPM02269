@@ -1,17 +1,16 @@
 import os
 import pandas as pd
 from datetime import timedelta, datetime
-
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.statistics.attributes.log import get as attributes_get
 from pm4py.visualization.performance_spectrum import visualizer as ps_visualizer
 
-from config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH
+from config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH
 
 
 class PerformanceAnalyzer:
-    def __init__(self, xes_path=os.path.join("data", "sampled_event_log.xes"), output_dir=PERFORMANCE_PATH):
+    def __init__(self, xes_path=XES_OUTPUT_PATH, output_dir=PERFORMANCE_PATH):
         self.xes_path = xes_path
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)

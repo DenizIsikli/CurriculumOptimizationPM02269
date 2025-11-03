@@ -1,15 +1,12 @@
 import os
-
 from pm4py import discover_petri_net_alpha, discover_petri_net_inductive, discover_process_tree_inductive
 from pm4py.algo.discovery.heuristics.algorithm import apply as discover_heuristics_net
-
 from pm4py.objects.log.util import sampling
 from pm4py.statistics.traces.generic.log import case_statistics
-
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 
-from config import MODEL_PATH, SAMPLE_FRACTION
+from config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
 
 
 class ProcessDiscovery:
@@ -22,7 +19,7 @@ class ProcessDiscovery:
         self.output_dir = output_dir
         self.sample_fraction = sample_fraction
         os.makedirs(self.output_dir, exist_ok=True)
-        self.event_log = event_log or xes_importer.apply(os.path.join("data", "sampled_event_log.xes"))
+        self.event_log = event_log or xes_importer.apply(XES_OUTPUT_PATH)
 
     def run(self):
         self._fraction_log()
