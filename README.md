@@ -49,5 +49,18 @@ The project leverages **process discovery**, **conformance checking**, and **per
 
 ---
 
-## 📄 Repository Structure
+## 📄 Repository structure
+**Root Directory:**
+- `notebooks/` — Jupyter version of the repository (not updated to current version)
+- `report/` — Final report, figures, and visual outputs
+- `results/` — Results folder
+- `performance_analysis/` — Performance analysis
+- `src/` — Source code
+- `venv/` — Python virtual environment (ignored by Git)
 
+**Files:**
+- `.gitattributes` — Git configuration for text/binary handling
+- `.gitignore` — Ignored files and folders
+- `LICENSE` — License information
+- `README.md` — Project documentation
+- `requirements.txt` — Python dependencies
