@@ -1,9 +1,8 @@
+import os
 import re
 from typing import Optional
-
 import numpy as np
 import pandas as pd
-
 from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
@@ -38,6 +37,8 @@ class DataPreparer:
         self._convert_to_event_log()
 
     def _load_raw_data(self) -> None:
+        if(os.path.exists(self.raw_path) == False):
+            raise FileNotFoundError(f"Raw data file not found at {self.raw_path}")
         print("Loading dataset")
         self.df = pd.read_excel(self.raw_path, header=1, dtype=str)
         print(f"Loaded dataset with {len(self.df):,} rows and {len(self.df.columns)} columns")
