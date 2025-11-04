@@ -1,14 +1,14 @@
 import os
 from datetime import datetime
-from pm4py.conformance import conformance_diagnostics_alignments
+from pm4py.objects.log.util import sampling
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.importer import importer as pnml_importer
 from pm4py.algo.conformance.tokenreplay import algorithm as token_replay
 from pm4py import conformance_diagnostics_alignments as alignments
-from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
 from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
 from pm4py.algo.evaluation.generalization import algorithm as generalization_evaluator
 from pm4py.algo.evaluation.simplicity import algorithm as simplicity_evaluator
+from pm4py.algo.conformance.alignments.petri_net import algorithm as alignments
 
 from config import MODEL_FILE, EVENT_LOG_FILE, CONFORMANCE_PATH, CONFORMANCE_LOG_PATH
 
@@ -34,6 +34,7 @@ class ConformanceChecker:
 
         # Load artifacts
         self.log = xes_importer.apply(self.log_path)
+        self.log = sampling.sample_log(self.log, int(len(self.log)*0.3)) # Sample 30% for efficiency
         self.net, self.initial_marking, self.final_marking = pnml_importer.apply(self.model_path)
 
     def run(self):
@@ -63,9 +64,7 @@ class ConformanceChecker:
         self._log_section("Token-based Replay", content)
 
     def _alignments(self):
-        from pm4py import conformance_diagnostics_alignments
-
-        fitness_result = conformance_diagnostics_alignments(
+        fitness_result = alignments(
             self.log, self.net, self.initial_marking, self.final_marking
         )
 
