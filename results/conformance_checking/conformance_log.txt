@@ -1,0 +1,16 @@
+=== CONFORMANCE CHECK REPORT (2025-11-05 01:20:52) ===
+
+--- TOKEN-BASED REPLAY ---
+Token-based Replay Fitness: 0.5733
+Number of traces evaluated: 44
+
+--- ALIGNMENTS (MULTIPROCESSING DIAGNOSTICS) ---
+Alignment-based Fitness (multiprocessing diagnostics): 0.0428
+Percentage fitting traces: 0.00%
+Traces evaluated: 44
+
+--- QUALITY MEASURES ---
+Precision: 0.4550
+Generalization: 0.0971
+Simplicity: 0.8182
+

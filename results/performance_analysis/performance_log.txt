@@ -1,29 +1,29 @@
-=== PERFORMANCE ANALYSIS LOG (2025-11-03 16:08:18) ===
+=== PERFORMANCE ANALYSIS LOG (2025-11-05 01:20:52) ===
 
 --- THROUGHPUT TIMES ---
-Average throughput time: -1.83 days
-Shortest case: -1453.00 days
-Longest case: 1408.00 days
-Total analyzed cases: 10452
+Average throughput time: 216.75 days
+Shortest case: -1211.00 days
+Longest case: 1378.00 days
+Total analyzed cases: 441
 
 --- ACTIVITY FREQUENCIES ---
-Total unique activities (courses): 1852
-Total events in log: 16362
+Total unique activities (courses): 1465
+Total events in log: 6532
 
 Top 10 most frequent activities:
-1. 1901 — 294 occurrences
-2. 1920 — 234 occurrences
-3. 1005 — 226 occurrences
-4. 42490 — 179 occurrences
-5. 2450 — 155 occurrences
-6. 2402 — 143 occurrences
-7. 62999 — 128 occurrences
-8. 2633 — 123 occurrences
-9. PRA62-30 — 109 occurrences
-10. 1035 — 108 occurrences
+1. 1005 — 97 occurrences
+2. 1901 — 89 occurrences
+3. 42490 — 78 occurrences
+4. 1920 — 75 occurrences
+5. 2450 — 64 occurrences
+6. 2402 — 63 occurrences
+7. 62999 — 48 occurrences
+8. PRA62-30 — 43 occurrences
+9. 2633 — 41 occurrences
+10. 1035 — 39 occurrences
 
 --- OVERALL LOG SUMMARY ---
-Number of traces (students): 10452
-Total events (course attempts): 16362
-Average events per trace: 1.57
+Number of traces (students): 441
+Total events (course attempts): 6532
+Average events per trace: 14.81
 
