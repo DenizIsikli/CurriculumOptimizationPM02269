@@ -1,5 +1,7 @@
+import multiprocessing
 import os
 from datetime import datetime
+from pandas.core.indexes import multi
 from pm4py.objects.log.util import sampling
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.importer import importer as pnml_importer
@@ -10,7 +12,7 @@ from pm4py.algo.evaluation.generalization import algorithm as generalization_eva
 from pm4py.algo.evaluation.simplicity import algorithm as simplicity_evaluator
 from pm4py.algo.conformance.alignments.petri_net import algorithm as alignments
 
-from config import MODEL_FILE, EVENT_LOG_FILE, CONFORMANCE_PATH, CONFORMANCE_LOG_PATH
+from src.config import MODEL_FILE, EVENT_LOG_FILE, CONFORMANCE_PATH, CONFORMANCE_LOG_PATH
 
 class ConformanceChecker:
     def __init__(
@@ -34,7 +36,7 @@ class ConformanceChecker:
 
         # Load artifacts
         self.log = xes_importer.apply(self.log_path)
-        self.log = sampling.sample_log(self.log, int(len(self.log)*0.3)) # Sample 30% for efficiency
+        self.log = sampling.sample_log(self.log, int(len(self.log)*0.1)) # Sample 10% for efficiency
         self.net, self.initial_marking, self.final_marking = pnml_importer.apply(self.model_path)
 
     def run(self):
@@ -64,17 +66,29 @@ class ConformanceChecker:
         self._log_section("Token-based Replay", content)
 
     def _alignments(self):
-        fitness_result = alignments(
-            self.log, self.net, self.initial_marking, self.final_marking
+        alignment_results = alignments.apply_multiprocessing(
+            self.log,
+            self.net,
+            self.initial_marking,
+            self.final_marking,
+            parameters={"variant": alignments.DEFAULT_VARIANT},
+        )
+
+        fitness_values = [r.get("fitness", 0) for r in alignment_results if "fitness" in r]
+        avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
+
+        perc_fit = (
+            100 * sum(1 for r in alignment_results if r.get("is_fit")) / len(alignment_results)
+            if alignment_results else 0
         )
 
         content = (
-            f"Alignment-based Fitness (diagnostic): {fitness_result['log_fitness']:.4f}\n"
-            f"Traces evaluated: {len(self.log)}\n"
-            f"Percentage fitting: {fitness_result.get('perc_fit_traces', 'N/A')}"
+            f"Alignment-based Fitness (multiprocessing diagnostics): {avg_fitness:.4f}\n"
+                f"Percentage fitting traces: {perc_fit:.2f}%\n"
+                f"Traces evaluated: {len(alignment_results)}"
         )
 
-        self._log_section("Alignments (Diagnostics)", content)
+        self._log_section("Alignments (Multiprocessing Diagnostics)", content)
 
     def _quality_measures(self):
         precision = precision_evaluator.apply(
