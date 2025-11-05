@@ -7,7 +7,7 @@ from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
-from config import RAW_DATA_PATH, PROCESSED_DATA_PATH, SAMPLED_DATA_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+from src.config import RAW_DATA_PATH, PROCESSED_DATA_PATH, SAMPLED_DATA_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
 
 
 class DataPreparer:
@@ -193,7 +193,10 @@ class DataPreparer:
         self.df.to_csv(self.processed_path, index=False)
         print(f"Processed data saved to {self.processed_path}")
 
-        df_sample = self.df.sample(frac=self.sample_fraction, random_state=42)
+        # Sample by student identifier (ensures complete traces)
+        unique_students = self.df["student_id"].unique()
+        sampled_students = np.random.choice(unique_students, size=int(len(unique_students) * self.sample_fraction), replace=False)
+        df_sample = self.df[self.df["student_id"].isin(sampled_students)].copy()
         df_sample.to_csv(self.sampled_path, index=False)
         print(f"Sampled data saved to {self.sampled_path}")
 
