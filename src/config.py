@@ -40,15 +40,6 @@ MODEL_FILE = os.path.join("results", "models", "inductive_miner.pnml")
 EVENT_LOG_FILE = os.path.join("results", "data", "sampled_event_log.xes")
 
 # ======================================
-# Create necessary directories
-# ======================================
-# Ensure directories exist
-os.makedirs(RESULTS_PATH := "results", exist_ok=True)
-os.makedirs(DATA_PATH, exist_ok=True)
-os.makedirs(MODEL_PATH, exist_ok=True)
-os.makedirs(PERFORMANCE_PATH, exist_ok=True)
-
-# ======================================
 # Sampling Configuration
 # ======================================
-SAMPLE_FRACTION = 0.05  # 5% sample for quicker processing
+SAMPLE_FRACTION = 0.02  # 20% sample for quicker processing
