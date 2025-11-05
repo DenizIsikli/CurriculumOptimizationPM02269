@@ -1,11 +1,16 @@
-from src import config
+from src.utils import Utils
 from src.data_preparation import DataPreparer
-from src.process_discovery import discover_process
-from src.performance_analysis import analyze_performance
-from src.conformance_checking import check_conformance
+from src.process_discovery import ProcessDiscovery
+from src.performance_analysis import PerformanceAnalyzer
+from src.conformance_checking import ConformanceChecker
+
 
 def main():
-    pass
+    Utils().run()
+    DataPreparer().run()
+    ProcessDiscovery().run()
+    PerformanceAnalyzer().run()
+    ConformanceChecker().run()
 
 
 if __name__ == "__main__":
