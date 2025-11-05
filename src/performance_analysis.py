@@ -6,7 +6,7 @@ from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.statistics.attributes.log import get as attributes_get
 from pm4py.visualization.performance_spectrum import visualizer as ps_visualizer
 
-from config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH
+from src.config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH
 
 
 class PerformanceAnalyzer:
