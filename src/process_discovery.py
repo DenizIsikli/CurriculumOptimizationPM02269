@@ -24,7 +24,7 @@ class ProcessDiscovery:
     def run(self):
         self._fraction_log()
         self._summarize_log()
-        self._run_alpha_miner()
+        # self._run_alpha_miner()
         self._run_inductive_miner()
         self._run_heuristics_miner()
         self._save_process_tree()

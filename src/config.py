@@ -42,4 +42,4 @@ EVENT_LOG_FILE = os.path.join("results", "data", "sampled_event_log.xes")
 # ======================================
 # Sampling Configuration
 # ======================================
-SAMPLE_FRACTION = 0.02  # 20% sample for quicker processing
+SAMPLE_FRACTION = 1  # 5% sample for quicker processing
