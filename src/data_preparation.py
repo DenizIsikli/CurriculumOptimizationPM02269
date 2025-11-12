@@ -95,6 +95,7 @@ class DataPreparer:
             df = df[df["education"] == self.program_filter].copy()
             print(f"Filtered data to program '{self.program_filter}', resulting in {len(df):,} rows")
         self.df = df
+
      # around 89% of grade_date are in 5,6,7 or 1,2,12 so merge all the 3 week courses into the main semesters
     def _assign_semesters(self) -> None:
         def semester_from_date(ts: pd.Timestamp) -> str:
@@ -169,7 +170,7 @@ class DataPreparer:
             # Pass/fail scale
             if "bestået" in scale:
                 if grade.startswith("be") or grade == "bestået":
-                    return True, float(12)
+                    return True, float(12) # TODO
                 if grade in non_pass_tokens:
                     return False, float(-3)
                 else :
@@ -254,7 +255,7 @@ class DataPreparer:
         print(f"Event log exported to {self.xes_path}")
 
 if __name__ == "__main__":
-    run = DataPreparer(program_filter="Matematisk modellering og computing, cand.polyt.",sample_fraction=1)
+    run = DataPreparer(program_filter="Softwareteknologi, ingeniør bach.",sample_fraction=1)
     run.run()
 
     # open the csv file and store a sorted list of course codes with highest fail exam attempts
