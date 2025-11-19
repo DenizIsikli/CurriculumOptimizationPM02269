@@ -39,15 +39,10 @@ CONFORMANCE_LOG_PATH = os.path.join(CONFORMANCE_PATH, "conformance_log.txt")
 MODEL_FILE = os.path.join("results", "models", "inductive_miner.pnml")
 EVENT_LOG_FILE = os.path.join("results", "data", "sampled_event_log.xes")
 
-# ======================================
 # Sampling Configuration
-# ======================================
-SAMPLE_FRACTION = 1  # 5% sample for quicker processing
-#############################################################
+SAMPLE_FRACTION = 0.075  # 5% sample for quicker processing
 
-
-# Add this to your data_preparation.py file
-
+# Recommend Curriculum
 RECOMMENDED_CURRICULUM = {
     # Semester 1 - Polyteknisk Grundlag + Core Software
     "01001": {"semester": 1, "type": "mandatory", "prerequisites": [], "ects": 10, "block": "Polyteknisk grundlag"},
@@ -135,4 +130,3 @@ COURSE_GROUPS = {
     "STS-CHOOSE-1": ["42620", "42622"],
     "RSPEC-CHOOSE-5ECTS": ["02155", "02156", "02159"],
 }
-

@@ -1,271 +1,358 @@
 import os
-import pandas as pd
-from datetime import timedelta, datetime
+from typing import Optional, Dict
+
 import numpy as np
-from scipy import stats
-from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.statistics.traces.generic.log import case_statistics
-from pm4py.statistics.attributes.log import get as attributes_get
+import pandas as pd
 
-from config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH, PROCESSED_DATA_PATH
+from pm4py.objects.conversion.log import converter as log_converter
+from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+from pm4py import discover_petri_net_inductive
+from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
+from pm4py.visualization.petri_net import visualizer as pn_visualizer
+
+from utils import Utils as util
+
+# Graphviz portable (adjust path if needed)
+GRAPHVIZ_BIN = r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269\graphviz_portable\release\bin"
+os.environ["PATH"] = GRAPHVIZ_BIN + os.pathsep + os.environ["PATH"]
 
 
-class PerformanceAnalyzer:
-    def __init__(self, xes_path=XES_OUTPUT_PATH, output_dir=PERFORMANCE_PATH):
-        self.xes_path = xes_path
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
-        self.log = xes_importer.apply(self.xes_path)
-        self.df = pd.read_csv(PROCESSED_DATA_PATH)
-        self.log_path = PERFORMANCE_LOG_PATH
-        with open(self.log_path, "w", encoding="utf-8") as f:  # Add encoding="utf-8"
-            f.write(f"=== PERFORMANCE ANALYSIS LOG ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ===\n\n")
+class PerformanceAnalysis:
+    """
+    Segment students into adherence × GPA groups and
+    generate readable process models + summary statistics.
 
-    def run(self):
-        self._throughput_times()
-        self._course_pass_rates()
-        self._grade_distribution_analysis()
-        self._retake_analysis()
-        self._semester_load_analysis()
-        self._time_between_courses()
-        self._course_difficulty_ranking()
-        self._gpa_analysis()
-        self._summary_section()
+    Groups:
+        - adherent_high_gpa
+        - adherent_low_gpa
+        - deviating_high_gpa
+        - deviating_low_gpa
+    """
 
-    def _log_section(self, title: str, content: str):
-        with open(self.log_path, "a", encoding="utf-8") as f:  # Add encoding="utf-8"
+    def __init__(
+        self,
+        processed_path: str = PROCESSED_DATA_PATH,
+        results_dir: str = PERFORMANCE_PATH,
+        gpa_high: float = 10.0,
+        gpa_low: float = 6.0,
+        adherence_tolerance: int = 1,
+        min_on_time_ratio: float = 0.7,
+        max_students_per_group: int = 20,
+        random_seed: int = 42,
+        restrict_to_curriculum: bool = True,
+        min_activity_freq: int = 5,
+        max_program_semester_for_model: int = 4,
+    ):
+        self.processed_path = processed_path
+        self.results_dir = results_dir
+        self.gpa_high = gpa_high
+        self.gpa_low = gpa_low
+        self.adherence_tolerance = adherence_tolerance
+        self.min_on_time_ratio = min_on_time_ratio
+        self.max_students_per_group = max_students_per_group
+        self.random_seed = random_seed
+        self.restrict_to_curriculum = restrict_to_curriculum
+        self.min_activity_freq = min_activity_freq
+        self.max_program_semester_for_model = max_program_semester_for_model
+
+        # Directories
+        self.group_dir = os.path.join(self.results_dir, "groups")
+        self.showcase_dir = os.path.join(self.results_dir, "showcase")
+
+        os.makedirs(self.results_dir, exist_ok=True)
+        os.makedirs(self.group_dir, exist_ok=True)
+        os.makedirs(self.showcase_dir, exist_ok=True)
+
+        # Dataframes
+        self.df: Optional[pd.DataFrame] = None          # event-level
+        self.students: Optional[pd.DataFrame] = None    # student-level
+
+        # RNG
+        self.rng = np.random.RandomState(self.random_seed)
+
+        # init log
+        with open(PERFORMANCE_LOG_PATH, "w") as f:
+            f.write("=== PERFORMANCE ANALYSIS LOG ===\n\n")
+
+    # ------------------------------------------------------------------ #
+    # Public entry point
+    # ------------------------------------------------------------------ #
+
+    def run(self) -> None:
+        util.load_config_by_platform()
+        self._load()
+        self._compute_gpa()
+        self._compute_curriculum_adherence()
+        self._build_student_table()
+        self._export_groups_and_models()
+
+    # ------------------------------------------------------------------ #
+    # Internal helpers
+    # ------------------------------------------------------------------ #
+
+    def _log(self, title: str, content: str) -> None:
+        with open(PERFORMANCE_LOG_PATH, "a") as f:
             f.write(f"--- {title.upper()} ---\n")
             f.write(content.strip() + "\n\n")
-        print(f"\n{content}")
 
-    def _throughput_times(self):
-        """Calculate time from first to last course per student"""
-        durations = case_statistics.get_all_case_durations(self.log, parameters={
-            case_statistics.Parameters.TIMESTAMP_KEY: "time:timestamp"
-        })
-        if not durations:
-            self._log_section("Throughput Times", "No durations could be computed.")
-            return
+    def _load(self) -> None:
+        if not os.path.exists(self.processed_path):
+            raise FileNotFoundError(f"Missing processed CSV: {self.processed_path}")
 
-        durations_days = [d / 86400 for d in durations]
-        avg_duration = np.mean(durations_days)
-        median_duration = np.median(durations_days)
-        
-        summary = (
-            f"Average time in program: {avg_duration:.1f} days ({avg_duration/365:.1f} years)\n"
-            f"Median time in program: {median_duration:.1f} days ({median_duration/365:.1f} years)\n"
-            f"Standard deviation: {np.std(durations_days):.1f} days\n"
-            f"Shortest case: {min(durations_days):.1f} days\n"
-            f"Longest case: {max(durations_days):.1f} days\n"
-            f"Expected program duration: ~3 years (1095 days)\n"
-            f"Students finishing within 3.5 years: {sum(1 for d in durations_days if d <= 1277) / len(durations_days):.1%}\n"
-            f"Total analyzed cases: {len(durations)}"
-        )
-        self._log_section("Throughput Times", summary)
+        df = pd.read_csv(self.processed_path)
 
-    def _course_pass_rates(self):
-        """Analyze pass/fail rates per course"""
-        if "passed" not in self.df.columns:
-            self._log_section("Course Pass Rates", "No pass/fail data available.")
-            return
-        
-        course_stats = self.df.groupby("course_code").agg({
-            "passed": ["sum", "count", "mean"],
-            "attempt_no": lambda x: (x > 1).sum()  # Number of retakes
-        })
-        course_stats.columns = ["passed_count", "total_attempts", "pass_rate", "retakes"]
-        course_stats = course_stats[course_stats["total_attempts"] >= 5]  # Filter courses with <5 attempts
-        course_stats = course_stats.sort_values("pass_rate")
-        
-        # Most difficult courses
-        difficult = course_stats.head(10)
-        difficult_summary = "\n".join([
-            f"{i+1}. {course}: {row['pass_rate']:.1%} pass rate ({int(row['passed_count'])}/{int(row['total_attempts'])} attempts, {int(row['retakes'])} retakes)"
-            for i, (course, row) in enumerate(difficult.iterrows())
-        ])
-        
-        # Easiest courses
-        easy = course_stats.tail(10)
-        easy_summary = "\n".join([
-            f"{i+1}. {course}: {row['pass_rate']:.1%} pass rate ({int(row['passed_count'])}/{int(row['total_attempts'])} attempts)"
-            for i, (course, row) in enumerate(easy.iterrows())
-        ])
-        
-        overall_pass_rate = self.df["passed"].sum() / len(self.df[self.df["passed"].notna()])
-        
-        summary = (
-            f"Overall pass rate: {overall_pass_rate:.1%}\n"
-            f"Total courses analyzed: {len(course_stats)}\n\n"
-            f"Top 10 Most Difficult Courses (lowest pass rate):\n{difficult_summary}\n\n"
-            f"Top 10 Easiest Courses (highest pass rate):\n{easy_summary}"
-        )
-        self._log_section("Course Pass Rates", summary)
+        # Ensure key columns exist
+        for col in ["student_id", "course_code", "grade_num", "Semester"]:
+            if col not in df.columns:
+                raise ValueError(f"processed data must include column '{col}'")
 
-    def _grade_distribution_analysis(self):
-        """Analyze grade distributions"""
-        if "grade_num" not in self.df.columns:
-            self._log_section("Grade Distribution", "No numeric grades available.")
-            return
-        
-        valid_grades = self.df[self.df["grade_num"].notna()]["grade_num"]
-        
-        # Grade scale: 12, 10, 7, 4, 02, 00, -3
-        grade_counts = valid_grades.value_counts().sort_index(ascending=False)
-        distribution = "\n".join([f"Grade {int(grade)}: {count} ({count/len(valid_grades):.1%})" 
-                                  for grade, count in grade_counts.items()])
-        
-        summary = (
-            f"Total graded attempts: {len(valid_grades)}\n"
-            f"Average grade: {valid_grades.mean():.2f}\n"
-            f"Median grade: {valid_grades.median():.2f}\n"
-            f"Standard deviation: {valid_grades.std():.2f}\n\n"
-            f"Grade Distribution:\n{distribution}\n\n"
-            f"Passing grades (≥2): {(valid_grades >= 2).sum()} ({(valid_grades >= 2).sum()/len(valid_grades):.1%})\n"
-            f"Excellent grades (≥10): {(valid_grades >= 10).sum()} ({(valid_grades >= 10).sum()/len(valid_grades):.1%})"
-        )
-        self._log_section("Grade Distribution", summary)
+        df["grade_num"] = pd.to_numeric(df["grade_num"], errors="coerce")
+        df["ects"] = pd.to_numeric(df.get("ects", np.nan), errors="coerce")
 
-    def _retake_analysis(self):
-        """Analyze course retake patterns"""
-        if "attempt_no" not in self.df.columns:
-            self._log_section("Retake Analysis", "No attempt number data available.")
-            return
-        
-        retakes = self.df[self.df["attempt_no"] > 1]
-        students_with_retakes = retakes["student_id"].nunique()
-        total_students = self.df["student_id"].nunique()
-        
-        # Courses with most retakes
-        retake_courses = retakes.groupby("course_code").size().sort_values(ascending=False).head(10)
-        retake_summary = "\n".join([f"{i+1}. {course}: {count} retakes" 
-                                    for i, (course, count) in enumerate(retake_courses.items())])
-        
-        # Students by retake count
-        student_retakes = retakes.groupby("student_id").size()
-        
-        summary = (
-            f"Students with retakes: {students_with_retakes} ({students_with_retakes/total_students:.1%})\n"
-            f"Total retake attempts: {len(retakes)}\n"
-            f"Average retakes per student (who retook): {student_retakes.mean():.1f}\n"
-            f"Max retakes by single student: {student_retakes.max()}\n\n"
-            f"Top 10 Most Retaken Courses:\n{retake_summary}"
-        )
-        self._log_section("Retake Analysis", summary)
-
-    def _semester_load_analysis(self):
-        """Analyze ECTS load per semester"""
-        if "ects" not in self.df.columns or "Semester" not in self.df.columns:
-            self._log_section("Semester Load", "No ECTS/semester data available.")
-            return
-        
-        # Only count passed courses for ECTS
-        passed_df = self.df[self.df["passed"] == True].copy()
-        
-        semester_load = passed_df.groupby(["student_id", "Semester"])["ects"].sum()
-        
-        summary = (
-            f"Average ECTS per semester: {semester_load.mean():.1f}\n"
-            f"Median ECTS per semester: {semester_load.median():.1f}\n"
-            f"Recommended ECTS per semester: 30\n"
-            f"Students averaging ≥30 ECTS: {(semester_load.groupby('student_id').mean() >= 30).sum()}\n"
-            f"Students averaging <20 ECTS: {(semester_load.groupby('student_id').mean() < 20).sum()}\n"
-            f"Minimum semester load: {semester_load.min():.1f} ECTS\n"
-            f"Maximum semester load: {semester_load.max():.1f} ECTS"
-        )
-        self._log_section("Semester Load Analysis", summary)
-
-    def _time_between_courses(self):
-        """Analyze time gaps between course completions"""
-        time_gaps = []
-        
-        for trace in self.log:
-            if len(trace) < 2:
-                continue
-            for i in range(len(trace) - 1):
-                t1 = trace[i]["time:timestamp"]
-                t2 = trace[i + 1]["time:timestamp"]
-                gap_days = (t2 - t1).total_seconds() / 86400
-                time_gaps.append(gap_days)
-        
-        if not time_gaps:
-            self._log_section("Time Between Courses", "No time gaps could be calculated.")
-            return
-        
-        summary = (
-            f"Average time between courses: {np.mean(time_gaps):.1f} days\n"
-            f"Median time between courses: {np.median(time_gaps):.1f} days\n"
-            f"Standard deviation: {np.std(time_gaps):.1f} days\n"
-            f"Shortest gap: {min(time_gaps):.1f} days\n"
-            f"Longest gap: {max(time_gaps):.1f} days\n"
-            f"Gaps > 6 months: {sum(1 for g in time_gaps if g > 180)} ({sum(1 for g in time_gaps if g > 180)/len(time_gaps):.1%})"
-        )
-        self._log_section("Time Between Courses", summary)
-
-    def _course_difficulty_ranking(self):
-        """Rank courses by combined metrics (fail rate + avg grade + retakes)"""
-        if "passed" not in self.df.columns or "grade_num" not in self.df.columns:
-            self._log_section("Course Difficulty Ranking", "Insufficient data.")
-            return
-        
-        course_metrics = self.df.groupby("course_code").agg({
-            "passed": lambda x: 1 - x.mean(),  # Fail rate
-            "grade_num": "mean",
-            "attempt_no": lambda x: (x > 1).sum() / len(x)  # Retake rate
-        }).rename(columns={
-            "passed": "fail_rate",
-            "grade_num": "avg_grade",
-            "attempt_no": "retake_rate"
-        })
-        
-        # Normalize and combine (lower score = harder course)
-        course_metrics["difficulty_score"] = (
-            course_metrics["fail_rate"] * 0.5 +
-            (12 - course_metrics["avg_grade"]) / 12 * 0.3 +
-            course_metrics["retake_rate"] * 0.2
-        )
-        
-        hardest = course_metrics.nlargest(10, "difficulty_score")
-        hardest_summary = "\n".join([
-            f"{i+1}. {course}: difficulty={row['difficulty_score']:.3f} (fail={row['fail_rate']:.1%}, avg grade={row['avg_grade']:.2f})"
-            for i, (course, row) in enumerate(hardest.iterrows())
-        ])
-        
-        summary = f"Top 10 Hardest Courses (composite difficulty score):\n{hardest_summary}"
-        self._log_section("Course Difficulty Ranking", summary)
-
-    def _gpa_analysis(self):
-        """Analyze GPA if available"""
-        if "cumulative_gpa" in self.df.columns:
-            student_gpa = self.df.groupby("student_id")["cumulative_gpa"].first()
-            
-            summary = (
-                f"Average GPA: {student_gpa.mean():.2f}\n"
-                f"Median GPA: {student_gpa.median():.2f}\n"
-                f"Standard deviation: {student_gpa.std():.2f}\n"
-                f"Highest GPA: {student_gpa.max():.2f}\n"
-                f"Lowest GPA: {student_gpa.min():.2f}\n"
-                f"Students with GPA ≥ 10: {(student_gpa >= 10).sum()} ({(student_gpa >= 10).sum()/len(student_gpa):.1%})\n"
-                f"Students with GPA < 4: {(student_gpa < 4).sum()} ({(student_gpa < 4).sum()/len(student_gpa):.1%})"
-            )
-            self._log_section("GPA Analysis", summary)
+        if "grade_date" in df.columns:
+            df["grade_date"] = pd.to_datetime(df["grade_date"], errors="coerce")
+            df = df.sort_values(["student_id", "grade_date"])
         else:
-            self._log_section("GPA Analysis", "GPA data not available. Run data_preparation with GPA calculation.")
+            df = df.sort_values(["student_id", "Semester"])
 
-    def _summary_section(self):
-        num_traces = len(self.log)
-        total_events = sum(len(trace) for trace in self.log)
-        avg_events_per_trace = total_events / num_traces if num_traces else 0
+        self.df = df
 
-        content = (
-            f"Number of traces (students): {num_traces}\n"
-            f"Total events (course attempts): {total_events}\n"
-            f"Average events per trace: {avg_events_per_trace:.2f}\n"
-            f"Unique courses in dataset: {self.df['course_code'].nunique()}"
+        self._log(
+            "Load processed data",
+            f"Rows: {len(df)}\nUnique students: {df['student_id'].nunique()}",
         )
-        print(content)
-        self._log_section("Overall Log Summary", content)
 
+    def _compute_gpa(self) -> None:
+        df = self.df
+        gpa = df.groupby("student_id")["grade_num"].mean().rename("gpa")
+        self.df = df.merge(gpa, on="student_id", how="left")
+
+        self._log(
+            "Compute GPA",
+            f"GPA computed for {gpa.shape[0]} students\n"
+            f"GPA range: {gpa.min():.2f} – {gpa.max():.2f}",
+        )
+
+    def _compute_curriculum_adherence(self) -> None:
+        df = self.df
+
+        def assign_program_semesters(group: pd.DataFrame) -> pd.DataFrame:
+            codes, uniques = pd.factorize(group["Semester"], sort=False)
+            group = group.copy()
+            group["program_semester"] = codes + 1
+            return group
+
+        df = (
+            df.sort_values(["student_id", "grade_date"])
+            .groupby("student_id", group_keys=False)
+            .apply(assign_program_semesters)
+        )
+
+        def get_rec_semester(course_code: str) -> float:
+            info: Dict = RECOMMENDED_CURRICULUM.get(str(course_code), None)
+            if info is None:
+                return np.nan
+            return float(info.get("semester", np.nan))
+
+        df["rec_semester"] = df["course_code"].astype(str).apply(get_rec_semester)
+        df["sem_deviation"] = df["program_semester"] - df["rec_semester"]
+        df["sem_deviation_abs"] = df["sem_deviation"].abs()
+        df["on_time"] = df["sem_deviation_abs"] <= float(self.adherence_tolerance)
+
+        self.df = df
+
+        known = df["sem_deviation_abs"].notna().sum()
+        self._log(
+            "Curriculum adherence",
+            f"Rows with known recommended semester: {known}/{len(df)}\n"
+            f"Mean abs deviation: {df['sem_deviation_abs'].dropna().mean():.3f}",
+        )
+
+    def _build_student_table(self) -> None:
+        df = self.df
+
+        def failed_count(s):
+            return int((s == False).sum())
+
+        student_stats = df.groupby("student_id").agg(
+            gpa=("gpa", "first"),
+            n_events=("course_code", "size"),
+            n_courses=("course_code", pd.Series.nunique),
+            ects_total=("ects", "sum"),
+            n_failures=("passed", failed_count)
+            if "passed" in df.columns else ("grade_num", lambda s: 0),
+            max_semester=("program_semester", "max"),
+            adherence_score=("sem_deviation_abs", "mean"),
+            on_time_ratio=("on_time", "mean"),
+        )
+
+        student_stats["adherent"] = (
+            student_stats["on_time_ratio"] >= self.min_on_time_ratio
+        )
+
+        self.students = student_stats
+
+        self._log(
+            "Student-level table",
+            f"Students total: {student_stats.shape[0]}\n"
+            f"Adherent: {(student_stats['adherent'] == True).sum()}\n"
+            f"Deviating: {(student_stats['adherent'] == False).sum()}",
+        )
+
+        master_csv = os.path.join(self.results_dir, "students_summary.csv")
+        student_stats.to_csv(master_csv)
+        self._log("Student summary export", f"Saved to {master_csv}")
+
+    # ------------------------------------------------------------------ #
+    # Model generation
+    # ------------------------------------------------------------------ #
+
+    def _export_groups_and_models(self) -> None:
+        students = self.students
+
+        groups = {
+            "adherent_high_gpa": (students["adherent"] == True) & (students["gpa"] >= self.gpa_high),
+            "adherent_low_gpa": (students["adherent"] == True) & (students["gpa"] <= self.gpa_low),
+            "deviating_high_gpa": (students["adherent"] == False) & (students["gpa"] >= self.gpa_high),
+            "deviating_low_gpa": (students["adherent"] == False) & (students["gpa"] <= self.gpa_low),
+        }
+
+        for name, mask in groups.items():
+            sub_students = students[mask]
+
+            if sub_students.empty:
+                self._log(name, "No students in this group; skipping.")
+                continue
+
+            # sample students
+            student_ids = sub_students.index.to_numpy()
+            if len(student_ids) > self.max_students_per_group:
+                sampled_ids = self.rng.choice(
+                    student_ids, size=self.max_students_per_group, replace=False
+                )
+            else:
+                sampled_ids = student_ids
+
+            group_events = self.df[self.df["student_id"].isin(sampled_ids)].copy()
+
+            # student summary
+            group_students_csv = os.path.join(self.group_dir, f"{name}_students.csv")
+            sub_students.loc[sampled_ids].to_csv(group_students_csv)
+
+            self._log(
+                name,
+                f"Students in group: {len(sub_students)} (sampled {len(sampled_ids)})\n"
+                f"Saved student summary to: {group_students_csv}\n"
+                f"GPA mean: {sub_students['gpa'].mean():.2f}\n"
+                f"Adherence score mean: {sub_students['adherence_score'].mean():.3f}",
+            )
+
+            # export model
+            self._export_filtered_model(name, group_events)
+
+    # ------------------------------------------------------------------ #
+    # CLEAN FILTERED VERSION OF MODEL EXPORT
+    # ------------------------------------------------------------------ #
+
+    def _export_filtered_model(self, name: str, df_sub: pd.DataFrame) -> None:
+        """
+        Apply multiple filters to reduce model complexity.
+        """
+
+        if df_sub.empty:
+            self._log(name, "No events for model; skipping.")
+            return
+
+        # 1) curriculum filter
+        if self.restrict_to_curriculum:
+            valid = set(RECOMMENDED_CURRICULUM.keys())
+            before = len(df_sub)
+            df_sub = df_sub[df_sub["course_code"].astype(str).isin(valid)]
+            after = len(df_sub)
+            self._log(name, f"Curriculum filter: {before} → {after}")
+
+        # 2) semester restriction
+        if (
+            "program_semester" in df_sub.columns
+            and self.max_program_semester_for_model is not None
+        ):
+            before = len(df_sub)
+            df_sub = df_sub[df_sub["program_semester"] <= self.max_program_semester_for_model]
+            after = len(df_sub)
+            self._log(
+                name,
+                f"Semester restriction: {before} → {after} (max={self.max_program_semester_for_model})",
+            )
+
+        # 3) rare activity filter
+        counts = df_sub["course_code"].value_counts()
+        keep_acts = counts[counts >= self.min_activity_freq].index
+        before = len(df_sub)
+        df_sub = df_sub[df_sub["course_code"].isin(keep_acts)]
+        after = len(df_sub)
+        self._log(name, f"Rare activity filter: {before} → {after}, kept {len(keep_acts)} activities")
+
+        # 4) drop too-small traces
+        df_sub = df_sub.groupby("student_id").filter(lambda g: len(g) >= 3)
+        if df_sub.empty:
+            self._log(name, "All traces too small; skipping.")
+            return
+
+        # ------------ build PM4Py log ------------
+        df_log = df_sub.copy()
+
+        df_log = df_log.rename(
+            columns={
+                "student_id": "case:concept:name",
+                "course_code": "concept:name",
+                "grade_date": "time:timestamp",
+            }
+        )
+
+        if "time:timestamp" in df_log.columns:
+            df_log["time:timestamp"] = pd.to_datetime(df_log["time:timestamp"], errors="coerce")
+
+        params = {
+            log_converter.Variants.TO_EVENT_LOG.value.Parameters.CASE_ID_KEY:
+                "case:concept:name"
+        }
+
+        base_cols = ["case:concept:name", "time:timestamp", "concept:name"]
+        extra_cols = [c for c in df_log.columns if c not in base_cols]
+        df_log = df_log[base_cols + extra_cols]
+
+        event_log = log_converter.apply(
+            df_log,
+            parameters=params,
+            variant=log_converter.Variants.TO_EVENT_LOG,
+        )
+
+        # ------------ export XES ------------
+        xes_path = os.path.join(self.group_dir, f"{name}.xes")
+        xes_exporter.apply(event_log, xes_path)
+
+        # ------------ discover model ------------
+        net, im, fm = discover_petri_net_inductive(event_log)
+
+        pnml_path = os.path.join(self.showcase_dir, f"{name}.pnml")
+        pnml_exporter.apply(net, im, pnml_path, final_marking=fm)
+
+        png_path = os.path.join(self.showcase_dir, f"{name}.png")
+        gviz = pn_visualizer.apply(net, im, fm)
+        pn_visualizer.save(gviz, png_path)
+
+        self._log(
+            f"Export {name}",
+            f"Cases: {len(event_log)}\n"
+            f"Total events: {sum(len(t) for t in event_log)}\n"
+            f"XES saved: {xes_path}\n"
+            f"PNML saved: {pnml_path}\n"
+            f"PNG saved: {png_path}",
+        )
+
+
+# ---------------------------------------------------------------------- #
 
 if __name__ == "__main__":
-    analyzer = PerformanceAnalyzer()
-    analyzer.run()
+    analysis = PerformanceAnalysis()
+    analysis.run()
