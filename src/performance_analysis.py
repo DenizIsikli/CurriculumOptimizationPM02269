@@ -10,7 +10,12 @@ from pm4py import discover_petri_net_inductive
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
-from utils import Utils as util
+from config import (
+    PERFORMANCE_PATH,
+    PERFORMANCE_LOG_PATH,
+    PROCESSED_DATA_PATH,
+    RECOMMENDED_CURRICULUM,
+)
 
 # Graphviz portable (adjust path if needed)
 GRAPHVIZ_BIN = r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269\graphviz_portable\release\bin"
@@ -79,7 +84,6 @@ class PerformanceAnalysis:
     # ------------------------------------------------------------------ #
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._load()
         self._compute_gpa()
         self._compute_curriculum_adherence()

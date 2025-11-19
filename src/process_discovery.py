@@ -12,7 +12,11 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
-from utils import Utils as util
+from config import (
+    MODEL_PATH,
+    SAMPLE_FRACTION,
+    XES_OUTPUT_PATH
+)
 
 GRAPHVIZ_BIN = (
     r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269"
@@ -45,7 +49,6 @@ class ProcessDiscovery:
     # --------------------------------------------------------------
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._summarize_log()
         self._run_alpha_miner()
         self._run_inductive_miner()

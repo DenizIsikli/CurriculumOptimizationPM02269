@@ -1,6 +1,5 @@
 import os
 import re
-from sys import platform
 from typing import Optional
 from datetime import datetime
 
@@ -11,7 +10,14 @@ from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
-from utils import Utils as util
+from config import (
+    DATA_PATH,
+    RAW_DATA_PATH,
+    PROCESSED_DATA_PATH,
+    SAMPLED_DATA_PATH,
+    SAMPLE_FRACTION,
+    XES_OUTPUT_PATH,
+)
 
 
 class DataPreparer:
@@ -49,7 +55,6 @@ class DataPreparer:
         self._init_log()
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._load_raw_data()
         self._clean_and_format()
         self._assign_semesters()
