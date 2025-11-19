@@ -1,0 +1,5 @@
+import pandas as pd
+
+df = pd.read_excel("results/data/DTU_dataset.xlsx", header=1, dtype=str)
+cols = df.columns.str.strip().str.upper().str.replace("Ø","O").str.replace("Æ","AE").str.replace("Å","A")
+print(cols.tolist())

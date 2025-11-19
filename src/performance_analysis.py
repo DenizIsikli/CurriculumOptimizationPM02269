@@ -7,7 +7,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.statistics.attributes.log import get as attributes_get
 
-from config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH, PROCESSED_DATA_PATH
+from src.config import PERFORMANCE_PATH, PERFORMANCE_LOG_PATH, XES_OUTPUT_PATH, PROCESSED_DATA_PATH
 
 
 class PerformanceAnalyzer:

@@ -8,7 +8,7 @@ from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
-from config import DATA_PATH, RAW_DATA_PATH, PROCESSED_DATA_PATH, SAMPLED_DATA_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+from src.config import DATA_PATH, RAW_DATA_PATH, PROCESSED_DATA_PATH, SAMPLED_DATA_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
 
 
 class DataPreparer:
@@ -40,14 +40,16 @@ class DataPreparer:
         self._convert_to_event_log()
 
     def _load_raw_data(self) -> None:
-        # Check if raw data file exists        
         if not os.path.exists(self.raw_path):
             raise FileNotFoundError(f"Raw data file not found at {self.raw_path}")
+
         print("Loading dataset")
-        self.df = pd.read_excel(self.raw_path, header=1, dtype=str)
+
+        # Load file (header 0 is correct!)
+        self.df = pd.read_excel(self.raw_path, header=0, dtype=str)
         print(f"Loaded dataset with {len(self.df):,} rows and {len(self.df.columns)} columns")
 
-        # Normalize column names
+        # NORMALIZE column names
         rename_map = {
             "STUDIENR": "student_id",
             "UDDANNELSE": "education",
@@ -59,22 +61,18 @@ class DataPreparer:
             "UDPROVNING": "exam_type",
             "CENSUR": "examiner",
             "BEDOMMELSESDATO": "grade_date",
-        }
+    }
 
-        self.df.columns = (
-            self.df.columns.str.strip()
-            .str.upper()
-            .str.replace("Ø", "O")
-            .str.replace("Æ", "AE")
-            .str.replace("Å", "A")
-        )
-        self.df = self.df.rename(columns=rename_map)
+        # ACTUAL RENAME (you missed this)
+        self.df.rename(columns=rename_map, inplace=True)
 
-        missing_cols = [c for c in rename_map.values() if c not in self.df.columns]
-        if missing_cols:
-            print(f"Warning: Missing columns after renaming: {missing_cols}")
+        # DEBUG – show missing
+        missing = [v for v in rename_map.values() if v not in self.df.columns]
+        if missing:
+            print("Warning: Missing columns after renaming:", missing)
+        else:
+            print("All columns successfully renamed.")
 
-        self.df = self.df[[c for c in rename_map.values() if c in self.df.columns]]
 
     def _clean_and_format(self) -> None:
         print("Cleaning and formatting data")

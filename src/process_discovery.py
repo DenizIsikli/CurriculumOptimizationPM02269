@@ -6,7 +6,7 @@ from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 
-from config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+from src.config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
 
 
 class ProcessDiscovery:
