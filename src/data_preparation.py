@@ -11,7 +11,28 @@ from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
-from utils import Utils as util
+try:
+    # Prefer package-relative imports when run with -m
+    from .utils import Utils as util
+    from .config import (
+        DATA_PATH,
+        RAW_DATA_PATH,
+        PROCESSED_DATA_PATH,
+        SAMPLED_DATA_PATH,
+        SAMPLE_FRACTION,
+        XES_OUTPUT_PATH,
+    )
+except ImportError:
+    # Fallback for direct execution without -m
+    from utils import Utils as util
+    from config import (
+        DATA_PATH,
+        RAW_DATA_PATH,
+        PROCESSED_DATA_PATH,
+        SAMPLED_DATA_PATH,
+        SAMPLE_FRACTION,
+        XES_OUTPUT_PATH,
+    )
 
 
 class DataPreparer:
