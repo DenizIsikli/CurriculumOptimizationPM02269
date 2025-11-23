@@ -1,0 +1,87 @@
+=== PERFORMANCE ANALYSIS LOG ===
+
+--- LOAD PROCESSED DATA ---
+Rows: 7362
+Unique students: 539
+
+--- COMPUTE GPA ---
+GPA computed for 539 students
+GPA range: -3.00 – 12.00
+
+--- CURRICULUM ADHERENCE ---
+Rows with known recommended semester: 3224/7362
+Mean abs deviation: 1.105
+
+--- STUDENT-LEVEL TABLE ---
+Students total: 539
+Adherent: 1
+Deviating: 538
+
+--- STUDENT SUMMARY EXPORT ---
+Saved to results/performance_analysis/students_summary.csv
+
+--- ADHERENT_HIGH_GPA ---
+Students in group: 1 (sampled 1)
+Saved student summary to: results/performance_analysis/groups/adherent_high_gpa_students.csv
+GPA mean: 10.00
+Adherence score mean: 0.667
+
+--- ADHERENT_HIGH_GPA ---
+Curriculum filter: 3 → 3
+
+--- ADHERENT_HIGH_GPA ---
+Semester restriction: 3 → 3 (max=4)
+
+--- ADHERENT_HIGH_GPA ---
+Rare activity filter: 3 → 0, kept 0 activities
+
+--- ADHERENT_HIGH_GPA ---
+All traces too small; skipping.
+
+--- ADHERENT_LOW_GPA ---
+No students in this group; skipping.
+
+--- DEVIATING_HIGH_GPA ---
+Students in group: 99 (sampled 20)
+Saved student summary to: results/performance_analysis/groups/deviating_high_gpa_students.csv
+GPA mean: 10.94
+Adherence score mean: 1.158
+
+--- DEVIATING_HIGH_GPA ---
+Curriculum filter: 248 → 106
+
+--- DEVIATING_HIGH_GPA ---
+Semester restriction: 106 → 95 (max=4)
+
+--- DEVIATING_HIGH_GPA ---
+Rare activity filter: 95 → 85, kept 9 activities
+
+--- EXPORT DEVIATING_HIGH_GPA ---
+Cases: 13
+Total events: 78
+XES saved: results/performance_analysis/groups/deviating_high_gpa.xes
+PNML saved: results/performance_analysis/showcase/deviating_high_gpa.pnml
+PNG saved: results/performance_analysis/showcase/deviating_high_gpa.png
+
+--- DEVIATING_LOW_GPA ---
+Students in group: 133 (sampled 20)
+Saved student summary to: results/performance_analysis/groups/deviating_low_gpa_students.csv
+GPA mean: 3.57
+Adherence score mean: 1.160
+
+--- DEVIATING_LOW_GPA ---
+Curriculum filter: 303 → 143
+
+--- DEVIATING_LOW_GPA ---
+Semester restriction: 143 → 114 (max=4)
+
+--- DEVIATING_LOW_GPA ---
+Rare activity filter: 114 → 100, kept 8 activities
+
+--- EXPORT DEVIATING_LOW_GPA ---
+Cases: 15
+Total events: 95
+XES saved: results/performance_analysis/groups/deviating_low_gpa.xes
+PNML saved: results/performance_analysis/showcase/deviating_low_gpa.pnml
+PNG saved: results/performance_analysis/showcase/deviating_low_gpa.png
+

@@ -10,16 +10,32 @@ from pm4py import discover_petri_net_inductive
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
-from config import (
-    PERFORMANCE_PATH,
-    PERFORMANCE_LOG_PATH,
-    PROCESSED_DATA_PATH,
-    RECOMMENDED_CURRICULUM,
-)
+try:
+    # Prefer package-relative imports when run with -m
+    from .utils import Utils as util
+    from .config import (
+        PROCESSED_DATA_PATH,
+        PERFORMANCE_PATH,
+        PERFORMANCE_LOG_PATH,
+        RECOMMENDED_CURRICULUM,
+    )
+except ImportError:
+    # Fallback for direct execution without -m
+    from utils import Utils as util
+    from config import (
+        PROCESSED_DATA_PATH,
+        PERFORMANCE_PATH,
+        PERFORMANCE_LOG_PATH,
+        RECOMMENDED_CURRICULUM,
+    )
 
-# Graphviz portable (adjust path if needed)
-GRAPHVIZ_BIN = r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269\graphviz_portable\release\bin"
-os.environ["PATH"] = GRAPHVIZ_BIN + os.pathsep + os.environ["PATH"]
+# Graphviz: allow override via env; keep Windows portable fallback for that OS only
+graphviz_bin = os.environ.get("GRAPHVIZ_BIN")
+if graphviz_bin:
+    os.environ["PATH"] = graphviz_bin + os.pathsep + os.environ["PATH"]
+elif os.name == "nt":
+    portable_bin = r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269\graphviz_portable\release\bin"
+    os.environ["PATH"] = portable_bin + os.pathsep + os.environ["PATH"]
 
 
 class PerformanceAnalysis:

@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from pm4py import (
     discover_petri_net_alpha,
@@ -12,17 +13,40 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
-from config import (
-    MODEL_PATH,
-    SAMPLE_FRACTION,
-    XES_OUTPUT_PATH
-)
+try:
+    # Prefer package-relative imports when run as a module
+    from .utils import Utils as util
+    from .config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+except ImportError:
+    # Fallback for direct execution without -m
+    from utils import Utils as util
+    from config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
 
-GRAPHVIZ_BIN = (
-    r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269"
-    r"\graphviz_portable\release\bin"
-)
-os.environ["PATH"] = GRAPHVIZ_BIN + os.pathsep + os.environ["PATH"]
+def _ensure_graphviz_on_path() -> None:
+    """
+    Make sure Graphviz binaries (dot) are reachable.
+    - Honor GRAPHVIZ_BIN env var if set (any OS).
+    - Keep existing Windows portable default as a fallback.
+    - Fail fast with a clear error if dot is still missing.
+    """
+    custom_bin = os.environ.get("GRAPHVIZ_BIN")
+    if custom_bin:
+        os.environ["PATH"] = custom_bin + os.pathsep + os.environ["PATH"]
+    elif os.name == "nt":
+        portable_bin = (
+            r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269"
+            r"\graphviz_portable\release\bin"
+        )
+        os.environ["PATH"] = portable_bin + os.pathsep + os.environ["PATH"]
+
+    if shutil.which("dot") is None:
+        raise RuntimeError(
+            "Graphviz executable 'dot' not found. "
+            "Install graphviz (e.g., apt install graphviz / brew install graphviz) "
+            "or set GRAPHVIZ_BIN to its bin directory."
+        )
+
+_ensure_graphviz_on_path()
 
 
 class ProcessDiscovery:
@@ -50,7 +74,7 @@ class ProcessDiscovery:
 
     def run(self) -> None:
         self._summarize_log()
-        self._run_alpha_miner()
+       #self._run_alpha_miner()
         self._run_inductive_miner()
         self._run_heuristics_miner()
         self._save_process_tree()
