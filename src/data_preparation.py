@@ -1,6 +1,5 @@
 import os
 import re
-from sys import platform
 from typing import Optional
 from datetime import datetime
 
@@ -70,7 +69,6 @@ class DataPreparer:
         self._init_log()
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._load_raw_data()
         self._clean_and_format()
         self._assign_semesters()

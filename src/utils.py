@@ -1,5 +1,4 @@
 import os
-import platform as _platform
 
 try:
     # Prefer package-relative imports when run with -m

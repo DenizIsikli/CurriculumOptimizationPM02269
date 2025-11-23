@@ -73,7 +73,6 @@ class ProcessDiscovery:
     # --------------------------------------------------------------
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._summarize_log()
        #self._run_alpha_miner()
         self._run_inductive_miner()

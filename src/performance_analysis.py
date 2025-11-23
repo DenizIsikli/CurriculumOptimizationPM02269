@@ -100,7 +100,6 @@ class PerformanceAnalysis:
     # ------------------------------------------------------------------ #
 
     def run(self) -> None:
-        util.load_config_by_platform()
         self._load()
         self._compute_gpa()
         self._compute_curriculum_adherence()
