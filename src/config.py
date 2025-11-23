@@ -40,7 +40,7 @@ MODEL_FILE = os.path.join("results", "models", "inductive_miner.pnml")
 EVENT_LOG_FILE = os.path.join("results", "data", "sampled_event_log.xes")
 
 # Sampling Configuration
-SAMPLE_FRACTION = 0.075  # 5% sample for quicker processing
+SAMPLE_FRACTION = 0.05  # 5% sample for quicker processing
 
 # Recommend Curriculum
 RECOMMENDED_CURRICULUM = {

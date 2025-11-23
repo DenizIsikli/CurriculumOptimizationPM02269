@@ -57,7 +57,7 @@ class PerformanceAnalysis:
         gpa_high: float = 10.0,
         gpa_low: float = 6.0,
         adherence_tolerance: int = 1,
-        min_on_time_ratio: float = 0.7,
+        min_on_time_ratio: float = 0.5,
         max_students_per_group: int = 20,
         random_seed: int = 42,
         restrict_to_curriculum: bool = True,
@@ -92,7 +92,7 @@ class PerformanceAnalysis:
         self.rng = np.random.RandomState(self.random_seed)
 
         # init log
-        with open(PERFORMANCE_LOG_PATH, "w") as f:
+        with open(PERFORMANCE_LOG_PATH, "w", encoding="utf-8", errors="replace") as f:
             f.write("=== PERFORMANCE ANALYSIS LOG ===\n\n")
 
     # ------------------------------------------------------------------ #
@@ -111,7 +111,7 @@ class PerformanceAnalysis:
     # ------------------------------------------------------------------ #
 
     def _log(self, title: str, content: str) -> None:
-        with open(PERFORMANCE_LOG_PATH, "a") as f:
+        with open(PERFORMANCE_LOG_PATH, "a", encoding="utf-8", errors="replace") as f:
             f.write(f"--- {title.upper()} ---\n")
             f.write(content.strip() + "\n\n")
 
@@ -202,8 +202,9 @@ class PerformanceAnalysis:
             n_failures=("passed", failed_count)
             if "passed" in df.columns else ("grade_num", lambda s: 0),
             max_semester=("program_semester", "max"),
-            adherence_score=("sem_deviation_abs", "mean"),
+            # adherence_score and on_time_ratio are % on-time (0–1)
             on_time_ratio=("on_time", "mean"),
+            adherence_score=("on_time", "mean"),
         )
 
         student_stats["adherent"] = (
@@ -259,28 +260,33 @@ class PerformanceAnalysis:
             group_students_csv = os.path.join(self.group_dir, f"{name}_students.csv")
             sub_students.loc[sampled_ids].to_csv(group_students_csv)
 
-            self._log(
-                name,
+            group_log_header = (
                 f"Students in group: {len(sub_students)} (sampled {len(sampled_ids)})\n"
                 f"Saved student summary to: {group_students_csv}\n"
                 f"GPA mean: {sub_students['gpa'].mean():.2f}\n"
-                f"Adherence score mean: {sub_students['adherence_score'].mean():.3f}",
+                f"Adherence score mean: {sub_students['adherence_score'].mean():.3f}"
             )
 
-            # export model
-            self._export_filtered_model(name, group_events)
+            # export model (logging combined inside)
+            self._export_filtered_model(name, group_events, group_log_header)
 
     # ------------------------------------------------------------------ #
     # CLEAN FILTERED VERSION OF MODEL EXPORT
     # ------------------------------------------------------------------ #
 
-    def _export_filtered_model(self, name: str, df_sub: pd.DataFrame) -> None:
+    def _export_filtered_model(self, name: str, df_sub: pd.DataFrame, header_log: str = "") -> None:
         """
         Apply multiple filters to reduce model complexity.
+        Combine all messages into a single log block per group.
         """
 
+        log_lines = []
+        if header_log:
+            log_lines.append(header_log)
+
         if df_sub.empty:
-            self._log(name, "No events for model; skipping.")
+            log_lines.append("No events for model; skipping.")
+            self._log(name, "\n".join(log_lines))
             return
 
         # 1) curriculum filter
@@ -289,7 +295,7 @@ class PerformanceAnalysis:
             before = len(df_sub)
             df_sub = df_sub[df_sub["course_code"].astype(str).isin(valid)]
             after = len(df_sub)
-            self._log(name, f"Curriculum filter: {before} → {after}")
+            log_lines.append(f"Curriculum filter: {before} -> {after}")
 
         # 2) semester restriction
         if (
@@ -299,9 +305,8 @@ class PerformanceAnalysis:
             before = len(df_sub)
             df_sub = df_sub[df_sub["program_semester"] <= self.max_program_semester_for_model]
             after = len(df_sub)
-            self._log(
-                name,
-                f"Semester restriction: {before} → {after} (max={self.max_program_semester_for_model})",
+            log_lines.append(
+                f"Semester restriction: {before} -> {after} (max={self.max_program_semester_for_model})"
             )
 
         # 3) rare activity filter
@@ -310,12 +315,15 @@ class PerformanceAnalysis:
         before = len(df_sub)
         df_sub = df_sub[df_sub["course_code"].isin(keep_acts)]
         after = len(df_sub)
-        self._log(name, f"Rare activity filter: {before} → {after}, kept {len(keep_acts)} activities")
+        log_lines.append(
+            f"Rare activity filter: {before} -> {after}, kept {len(keep_acts)} activities"
+        )
 
         # 4) drop too-small traces
         df_sub = df_sub.groupby("student_id").filter(lambda g: len(g) >= 3)
         if df_sub.empty:
-            self._log(name, "All traces too small; skipping.")
+            log_lines.append("All traces too small; skipping.")
+            self._log(name, "\n".join(log_lines))
             return
 
         # ------------ build PM4Py log ------------
@@ -361,14 +369,15 @@ class PerformanceAnalysis:
         gviz = pn_visualizer.apply(net, im, fm)
         pn_visualizer.save(gviz, png_path)
 
-        self._log(
-            f"Export {name}",
+        log_lines.append(
             f"Cases: {len(event_log)}\n"
             f"Total events: {sum(len(t) for t in event_log)}\n"
             f"XES saved: {xes_path}\n"
             f"PNML saved: {pnml_path}\n"
-            f"PNG saved: {png_path}",
+            f"PNG saved: {png_path}"
         )
+
+        self._log(name, "\n".join(log_lines))
 
 
 # ---------------------------------------------------------------------- #
