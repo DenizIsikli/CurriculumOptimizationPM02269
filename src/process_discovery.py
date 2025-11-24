@@ -7,7 +7,9 @@ from pm4py import (
     discover_process_tree_inductive,
 )
 from pm4py.algo.discovery.heuristics.algorithm import apply as discover_heuristics_net
-from pm4py.objects.log.util import sampling
+from pm4py.objects.log.obj import EventLog, Trace, Event
+from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
+from pm4py import discover_petri_net_inductive
 from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
@@ -16,11 +18,11 @@ from pm4py.visualization.petri_net import visualizer as pn_visualizer
 try:
     # Prefer package-relative imports when run as a module
     from .utils import Utils as util
-    from .config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+    from .config import PROCESS_DISCOVERY, SAMPLE_FRACTION, XES_OUTPUT_PATH, RECOMMENDED_CURRICULUM
 except ImportError:
     # Fallback for direct execution without -m
     from utils import Utils as util
-    from config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+    from config import PROCESS_DISCOVERY, SAMPLE_FRACTION, XES_OUTPUT_PATH, RECOMMENDED_CURRICULUM
 
 def _ensure_graphviz_on_path() -> None:
     """
@@ -58,25 +60,26 @@ class ProcessDiscovery:
     def __init__(
         self,
         event_log=None,
-        output_dir=MODEL_PATH,
+        output_dir=PROCESS_DISCOVERY,
         sample_fraction=SAMPLE_FRACTION,
-        max_traces=15,      # NEW → cap per-group for readability
+        recommended_curriculum=RECOMMENDED_CURRICULUM,
+        max_traces=10, # cap per-group for readability
     ):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.sample_fraction = sample_fraction
+        self.recommended_curriculum = recommended_curriculum
         self.max_traces = max_traces
 
         self.event_log = event_log or xes_importer.apply(XES_OUTPUT_PATH)
 
-    # --------------------------------------------------------------
-
     def run(self) -> None:
         self._summarize_log()
-       #self._run_alpha_miner()
+        # self._run_alpha_miner()
         self._run_inductive_miner()
         self._run_heuristics_miner()
+        self._generate_curriculum_model()
         self._save_process_tree()
 
     def _summarize_log(self) -> None:
@@ -95,8 +98,6 @@ class ProcessDiscovery:
             len(case_statistics.get_variant_statistics(self.event_log)),
         )
 
-    # --------------------------------------------------------------
-
     def _run_alpha_miner(self):
         net, im, fm = discover_petri_net_alpha(self.event_log)
         self._save_model(net, im, fm, "alpha_miner")
@@ -109,7 +110,38 @@ class ProcessDiscovery:
         net, im, fm = discover_heuristics_net(self.event_log)
         self._save_model(net, im, fm, "heuristics_miner")
 
-    # --------------------------------------------------------------
+    def _generate_curriculum_model(self):
+        # 1. Build a synthetic trace
+        trace = Trace()
+
+        # Sort curriculum by semester
+        courses = [
+            (code, meta)
+            for code, meta in self.recommended_curriculum.items()
+            if isinstance(meta.get("semester"), (int, float))
+        ]
+        courses = sorted(courses, key=lambda x: x[1]["semester"])
+
+        # Build the ordered trace
+        for code, meta in courses:
+            trace.append(Event({"concept:name": code}))
+
+        # 2. Wrap in an event log
+        log = EventLog()
+        log.append(trace)
+
+        # 3. Use Inductive Miner to create a proper Petri net
+        net, im, fm = discover_petri_net_inductive(log)
+
+        # 4. Save PNML + PNG
+        pnml_path = os.path.join(self.output_dir, "curriculum_model.pnml")
+        pnml_exporter.apply(net, im, pnml_path, final_marking=fm)
+
+        png_path = os.path.join(self.output_dir, "curriculum_model.png")
+        gviz = pn_visualizer.apply(net, im, fm)
+        pn_visualizer.save(gviz, png_path)
+
+        print(f"Saved: {png_path}")
 
     def _save_model(self, net, im, fm, name):
         pnml = os.path.join(self.output_dir, f"{name}.pnml")
@@ -120,8 +152,6 @@ class ProcessDiscovery:
         pn_visualizer.save(gviz, png)
 
         print(f"Saved: {png}")
-
-    # --------------------------------------------------------------
 
     def _save_process_tree(self):
         tree = discover_process_tree_inductive(self.event_log)

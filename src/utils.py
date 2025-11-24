@@ -5,7 +5,7 @@ try:
     from .config import (
         RESULTS_PATH,
         DATA_PATH,
-        MODEL_PATH,
+        PROCESS_DISCOVERY,
         PERFORMANCE_PATH,
         RAW_DATA_PATH,
         PROCESSED_DATA_PATH,
@@ -18,7 +18,7 @@ except ImportError:
     from config import (
         RESULTS_PATH,
         DATA_PATH,
-        MODEL_PATH,
+        PROCESS_DISCOVERY,
         PERFORMANCE_PATH,
         RAW_DATA_PATH,
         PROCESSED_DATA_PATH,
@@ -38,7 +38,7 @@ class Utils:
     def _ensure_dir_exists(self):
         if not os.path.exists(RESULTS_PATH): os.makedirs(RESULTS_PATH)
         if not os.path.exists(DATA_PATH): os.makedirs(DATA_PATH)
-        if not os.path.exists(MODEL_PATH): os.makedirs(MODEL_PATH)
+        if not os.path.exists(PROCESS_DISCOVERY): os.makedirs(PROCESS_DISCOVERY)
         if not os.path.exists(PERFORMANCE_PATH): os.makedirs(PERFORMANCE_PATH)
 
     def load_config_by_platform():
@@ -46,7 +46,7 @@ class Utils:
         Re-import config names in whichever mode we are running:
         package (`python -m src.*`) or direct script execution.
         """
-        global RESULTS_PATH, DATA_PATH, MODEL_PATH, PERFORMANCE_PATH
+        global RESULTS_PATH, DATA_PATH, PROCESS_DISCOVERY, PERFORMANCE_PATH
         global RAW_DATA_PATH, PROCESSED_DATA_PATH, SAMPLED_DATA_PATH
         global SAMPLE_FRACTION, XES_OUTPUT_PATH
 
@@ -54,7 +54,7 @@ class Utils:
             from .config import (
                 RESULTS_PATH as _R,
                 DATA_PATH as _D,
-                MODEL_PATH as _M,
+                PROCESS_DISCOVERY as _M,
                 PERFORMANCE_PATH as _P,
                 RAW_DATA_PATH as _RAW,
                 PROCESSED_DATA_PATH as _PROC,
@@ -66,7 +66,7 @@ class Utils:
             from config import (
                 RESULTS_PATH as _R,
                 DATA_PATH as _D,
-                MODEL_PATH as _M,
+                PROCESS_DISCOVERY as _M,
                 PERFORMANCE_PATH as _P,
                 RAW_DATA_PATH as _RAW,
                 PROCESSED_DATA_PATH as _PROC,
@@ -77,7 +77,7 @@ class Utils:
 
         RESULTS_PATH = _R
         DATA_PATH = _D
-        MODEL_PATH = _M
+        PROCESS_DISCOVERY = _M
         PERFORMANCE_PATH = _P
         RAW_DATA_PATH = _RAW
         PROCESSED_DATA_PATH = _PROC

@@ -1,113 +1,84 @@
-import multiprocessing
 import os
 from datetime import datetime
-from pandas.core.indexes import multi
-from pm4py.objects.log.util import sampling
+
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.importer import importer as pnml_importer
 from pm4py.algo.conformance.tokenreplay import algorithm as token_replay
-from pm4py import conformance_diagnostics_alignments as alignments
-from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
-from pm4py.algo.evaluation.generalization import algorithm as generalization_evaluator
-from pm4py.algo.evaluation.simplicity import algorithm as simplicity_evaluator
 from pm4py.algo.conformance.alignments.petri_net import algorithm as alignments
 
-from src.config import MODEL_FILE, EVENT_LOG_FILE, CONFORMANCE_PATH, CONFORMANCE_LOG_PATH
+
+REFERENCE_MODEL = "results/model/inductive_miner.pnml"     # curriculum PNML
+GROUP_LOG_DIR = "results/performance_analysis/groups"      # folder with XES logs
+OUTPUT_REPORT = "results/conformance/conformance_report.txt"
+
+GROUP_LOGS = {
+    "adherent_high_gpa":  "adherent_high_gpa.xes",
+    "adherent_low_gpa":   "adherent_low_gpa.xes",
+    "deviating_high_gpa": "deviating_high_gpa.xes",
+    "deviating_low_gpa":  "deviating_low_gpa.xes",
+}
+
+def write(report_path, text):
+    with open(report_path, "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+
 
 class ConformanceChecker:
-    def __init__(
-        self,
-        model_path: str = MODEL_FILE,
-        log_path: str = EVENT_LOG_FILE,
-        output_dir: str = CONFORMANCE_PATH,
-    ):
+    def __init__(self, model_path, group_logs, log_dir, report_file):
         self.model_path = model_path
-        self.log_path = log_path
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.group_logs = group_logs
+        self.log_dir = log_dir
+        self.report_file = report_file
 
-        # Output log file
-        self.report_path = CONFORMANCE_LOG_PATH
-        with open(self.report_path, "w") as f:
-            f.write(
-                f"=== CONFORMANCE CHECK REPORT "
-                f"({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ===\n\n"
-            )
+        # reset file
+        os.makedirs(os.path.dirname(report_file), exist_ok=True)
+        with open(report_file, "w", encoding="utf-8") as f:
+            f.write(f"=== CONFORMANCE CHECK REPORT ({datetime.now()}) ===\n\n")
 
-        # Load artifacts
-        self.log = xes_importer.apply(self.log_path)
-        self.log = sampling.sample_log(self.log, int(len(self.log)*0.1)) # Sample 10% for efficiency
-        self.net, self.initial_marking, self.final_marking = pnml_importer.apply(self.model_path)
+        # load reference PNML model
+        self.net, self.im, self.fm = pnml_importer.apply(self.model_path)
 
     def run(self):
-        self._token_replay()
-        self._alignments()
-        self._quality_measures()
+        for group_name, filename in self.group_logs.items():
+            log_path = os.path.join(self.log_dir, filename)
 
-    def _log_section(self, title: str, content: str) -> None:
-        with open(self.report_path, "a") as f:
-            f.write(f"--- {title.upper()} ---\n")
-            f.write(content.strip() + "\n\n")
+            if not os.path.exists(log_path):
+                write(self.report_file, f"[{group_name}] XES not found → skipping\n")
+                continue
 
-    def _token_replay(self):
-        results = token_replay.apply(self.log, self.net, self.initial_marking, self.final_marking)
+            log = xes_importer.apply(log_path)
+            write(self.report_file, f"--- {group_name.upper()} ---")
+            write(self.report_file, f"Traces in log: {len(log)}")
 
-        # Compute fitness as average token replay result
-        fitness_values = [
-            r["trace_fitness"] for r in results if "trace_fitness" in r
-        ]
-        avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
+            self.token_replay_fitness(log, group_name)
+            self.alignment_fitness(log, group_name)
+            write(self.report_file, "\n")
 
-        content = (
-            f"Token-based Replay Fitness: {avg_fitness:.4f}\n"
-            f"Number of traces evaluated: {len(fitness_values)}"
-        )
+    def token_replay_fitness(self, log, group):
+        results = token_replay.apply(log, self.net, self.im, self.fm)
+        fitness = [r["trace_fitness"] for r in results]
 
-        self._log_section("Token-based Replay", content)
+        avg_fit = sum(fitness) / len(fitness) if fitness else 0
 
-    def _alignments(self):
-        alignment_results = alignments.apply_multiprocessing(
-            self.log,
-            self.net,
-            self.initial_marking,
-            self.final_marking,
-            parameters={"variant": alignments.DEFAULT_VARIANT},
-        )
+        write(self.report_file, f"Token Replay Fitness: {avg_fit:.3f}")
 
-        fitness_values = [r.get("fitness", 0) for r in alignment_results if "fitness" in r]
-        avg_fitness = sum(fitness_values) / len(fitness_values) if fitness_values else 0
+    def alignment_fitness(self, log, group):
+        align_res = alignments.apply(log, self.net, self.im, self.fm)
 
-        perc_fit = (
-            100 * sum(1 for r in alignment_results if r.get("is_fit")) / len(alignment_results)
-            if alignment_results else 0
-        )
+        fitness_values = [a["fitness"] for a in align_res]
+        avg_fit = sum(fitness_values) / len(fitness_values) if fitness_values else 0
 
-        content = (
-            f"Alignment-based Fitness (multiprocessing diagnostics): {avg_fitness:.4f}\n"
-                f"Percentage fitting traces: {perc_fit:.2f}%\n"
-                f"Traces evaluated: {len(alignment_results)}"
-        )
+        perc_fitting = 100 * sum(a.get("is_fit", False) for a in align_res) / len(align_res)
 
-        self._log_section("Alignments (Multiprocessing Diagnostics)", content)
-
-    def _quality_measures(self):
-        precision = precision_evaluator.apply(
-            self.log, self.net, self.initial_marking, self.final_marking
-        )
-        generalization = generalization_evaluator.apply(
-            self.log, self.net, self.initial_marking, self.final_marking
-        )
-        simplicity = simplicity_evaluator.apply(self.net)
-
-        content = (
-            f"Precision: {precision:.4f}\n"
-            f"Generalization: {generalization:.4f}\n"
-            f"Simplicity: {simplicity:.4f}"
-        )
-
-        self._log_section("Quality Measures", content)
+        write(self.report_file, f"Alignment Fitness: {avg_fit:.3f}")
+        write(self.report_file, f"Percentage Fitting Traces: {perc_fitting:.1f}%")
 
 
 if __name__ == "__main__":
-    checker = ConformanceChecker()
+    checker = ConformanceChecker(
+        model_path=REFERENCE_MODEL,
+        group_logs=GROUP_LOGS,
+        log_dir=GROUP_LOG_DIR,
+        report_file=OUTPUT_REPORT,
+    )
     checker.run()

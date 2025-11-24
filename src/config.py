@@ -13,14 +13,14 @@ XES_OUTPUT_PATH = os.path.join(DATA_PATH, "sampled_event_log.xes")
 # ======================================
 # model_training.py Configurations
 # ======================================
-MODEL_PATH = os.path.join("results", "models")
-IM_MODEL_PATH = os.path.join(MODEL_PATH, "inductive_miner.pnml")
-HM_MODEL_PATH = os.path.join(MODEL_PATH, "heuristics_miner.pnml")
-PTREE_PATH = os.path.join(MODEL_PATH, "process_tree.png")
+PROCESS_DISCOVERY = os.path.join("results", "process_discovery")
+IM_MODEL_PATH = os.path.join(PROCESS_DISCOVERY, "inductive_miner.pnml")
+HM_MODEL_PATH = os.path.join(PROCESS_DISCOVERY, "heuristics_miner.pnml")
+PTREE_PATH = os.path.join(PROCESS_DISCOVERY, "process_tree.png")
 
 # Visualization Outputs
-IM_IMAGE_PATH = os.path.join(MODEL_PATH, "inductive_miner.png")
-HM_IMAGE_PATH = os.path.join(MODEL_PATH, "heuristics_miner.png")
+IM_IMAGE_PATH = os.path.join(PROCESS_DISCOVERY, "inductive_miner.png")
+HM_IMAGE_PATH = os.path.join(PROCESS_DISCOVERY, "heuristics_miner.png")
 
 # ======================================
 # performance_analysis.py Configurations
