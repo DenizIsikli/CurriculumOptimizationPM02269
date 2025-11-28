@@ -1,51 +1,102 @@
 import os
-from pm4py import discover_petri_net_alpha, discover_petri_net_inductive, discover_process_tree_inductive
+import shutil
+
+from pm4py import (
+    discover_petri_net_alpha,
+    discover_petri_net_inductive,
+    discover_process_tree_inductive,
+)
 from pm4py.algo.discovery.heuristics.algorithm import apply as discover_heuristics_net
-from pm4py.objects.log.util import sampling
+from pm4py.objects.log.obj import EventLog, Trace, Event
+from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
+from pm4py import discover_petri_net_inductive
 from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
+from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
-from src.config import MODEL_PATH, SAMPLE_FRACTION, XES_OUTPUT_PATH
+try:
+    # Prefer package-relative imports when run as a module
+    from .utils import Utils as util
+    from .config import PROCESS_DISCOVERY, SAMPLE_FRACTION, XES_OUTPUT_PATH, RECOMMENDED_CURRICULUM
+except ImportError:
+    # Fallback for direct execution without -m
+    from utils import Utils as util
+    from config import PROCESS_DISCOVERY, SAMPLE_FRACTION, XES_OUTPUT_PATH, RECOMMENDED_CURRICULUM
+
+def _ensure_graphviz_on_path() -> None:
+    """
+    Make sure Graphviz binaries (dot) are reachable.
+    - Honor GRAPHVIZ_BIN env var if set (any OS).
+    - Keep existing Windows portable default as a fallback.
+    - Fail fast with a clear error if dot is still missing.
+    """
+    custom_bin = os.environ.get("GRAPHVIZ_BIN")
+    if custom_bin:
+        os.environ["PATH"] = custom_bin + os.pathsep + os.environ["PATH"]
+    elif os.name == "nt":
+        portable_bin = (
+            r"C:\Users\deniz\Desktop\Code\CurriculumOptimizationPM02269"
+            r"\graphviz_portable\release\bin"
+        )
+        os.environ["PATH"] = portable_bin + os.pathsep + os.environ["PATH"]
+
+    if shutil.which("dot") is None:
+        raise RuntimeError(
+            "Graphviz executable 'dot' not found. "
+            "Install graphviz (e.g., apt install graphviz / brew install graphviz) "
+            "or set GRAPHVIZ_BIN to its bin directory."
+        )
+
+_ensure_graphviz_on_path()
 
 
 class ProcessDiscovery:
+    """
+    Runs process discovery on an event log.
+    Adds automatic per-group sampling for readability.
+    """
+
     def __init__(
-            self,
-            event_log=None,
-            output_dir=MODEL_PATH,
-            sample_fraction=SAMPLE_FRACTION
+        self,
+        event_log=None,
+        output_dir=PROCESS_DISCOVERY,
+        sample_fraction=SAMPLE_FRACTION,
+        recommended_curriculum=RECOMMENDED_CURRICULUM,
+        max_traces=10, # cap per-group for readability
     ):
         self.output_dir = output_dir
-        self.sample_fraction = sample_fraction
         os.makedirs(self.output_dir, exist_ok=True)
+
+        self.sample_fraction = sample_fraction
+        self.recommended_curriculum = recommended_curriculum
+        self.max_traces = max_traces
+
         self.event_log = event_log or xes_importer.apply(XES_OUTPUT_PATH)
 
-    def run(self):
-        self._fraction_log()
+    def run(self) -> None:
         self._summarize_log()
-        self._run_alpha_miner()
+        # self._run_alpha_miner()
         self._run_inductive_miner()
         self._run_heuristics_miner()
+        self._generate_curriculum_model()
         self._save_process_tree()
 
-    def _fraction_log(self):
-        total_traces = len(self.event_log)
-        n = int(total_traces * self.sample_fraction)
-        print(f"Total unique students before sampling: {total_traces}")
-        print(f"Sampling {n} traces (~{self.sample_fraction*100:.1f}%) of total")
-        self.event_log = sampling.sample_log(self.event_log, n)
-
     def _summarize_log(self) -> None:
-        activity_key = "concept:name" if "concept:name" in self.event_log[0][0] else "course_code"
+        activity_key = "concept:name"
         parameters = {case_statistics.Parameters.ACTIVITY_KEY: activity_key}
 
-        print("Event Log Summary")
-        print(f"  Number of traces (students): {len(self.event_log)}")
-        print(f"  Total events (Total course attempts): {sum(len(t) for t in self.event_log)}")
-        print(f"  Unique activities (Different courses taken): {len(set(e[activity_key] for t in self.event_log for e in t))}")
-        print(f"  Variants (Unique paths students took through the process): {len(case_statistics.get_variant_statistics(self.event_log, parameters=parameters))}")
-        print("-" * 60)
+        print("Summary:")
+        print("  Traces:", len(self.event_log))
+        print("  Events:", sum(len(t) for t in self.event_log))
+        print(
+            "  Activities:",
+            len({e[activity_key] for t in self.event_log for e in t}),
+        )
+        print(
+            "  Variants:",
+            len(case_statistics.get_variant_statistics(self.event_log)),
+        )
 
     def _run_alpha_miner(self):
         net, im, fm = discover_petri_net_alpha(self.event_log)
@@ -59,20 +110,58 @@ class ProcessDiscovery:
         net, im, fm = discover_heuristics_net(self.event_log)
         self._save_model(net, im, fm, "heuristics_miner")
 
-    def _save_model(self, net, im, fm, name):
-        pnml_path = os.path.join(self.output_dir, f"{name}.pnml")
+    def _generate_curriculum_model(self):
+        # 1. Build a synthetic trace
+        trace = Trace()
+
+        # Sort curriculum by semester
+        courses = [
+            (code, meta)
+            for code, meta in self.recommended_curriculum.items()
+            if isinstance(meta.get("semester"), (int, float))
+        ]
+        courses = sorted(courses, key=lambda x: x[1]["semester"])
+
+        # Build the ordered trace
+        for code, meta in courses:
+            trace.append(Event({"concept:name": code}))
+
+        # 2. Wrap in an event log
+        log = EventLog()
+        log.append(trace)
+
+        # 3. Use Inductive Miner to create a proper Petri net
+        net, im, fm = discover_petri_net_inductive(log)
+
+        # 4. Save PNML + PNG
+        pnml_path = os.path.join(self.output_dir, "curriculum_model.pnml")
         pnml_exporter.apply(net, im, pnml_path, final_marking=fm)
-        print(f"Saved {name} model to {pnml_path}")
+
+        png_path = os.path.join(self.output_dir, "curriculum_model.png")
+        gviz = pn_visualizer.apply(net, im, fm)
+        pn_visualizer.save(gviz, png_path)
+
+        print(f"Saved: {png_path}")
+
+    def _save_model(self, net, im, fm, name):
+        pnml = os.path.join(self.output_dir, f"{name}.pnml")
+        pnml_exporter.apply(net, im, pnml, final_marking=fm)
+
+        png = os.path.join(self.output_dir, f"{name}.png")
+        gviz = pn_visualizer.apply(net, im, fm)
+        pn_visualizer.save(gviz, png)
+
+        print(f"Saved: {png}")
 
     def _save_process_tree(self):
         tree = discover_process_tree_inductive(self.event_log)
-        path = os.path.join(self.output_dir, "process_tree.ptml")
-        with open(path, "w") as f:
+        ptml = os.path.join(self.output_dir, "process_tree.ptml")
+
+        with open(ptml, "w") as f:
             f.write(str(tree))
 
-        print(f"Process tree saved to {path}")
+        print(f"Saved: {ptml}")
 
 
 if __name__ == "__main__":
-    run = ProcessDiscovery()
-    run.run()
+    ProcessDiscovery().run()
