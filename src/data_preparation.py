@@ -110,14 +110,16 @@ class DataPreparer:
             "BEDOMMELSESDATO": "grade_date",
     }
 
+        df.columns = df.columns.str.strip().str.upper()
+        df = df.rename(columns=rename_map)
+
         df.columns = (
-            df.columns.str.strip()
-            .str.upper()
+            df.columns
             .str.replace("Ø", "O")
             .str.replace("Æ", "AE")
             .str.replace("Å", "A")
         )
-        df = df.rename(columns=rename_map)
+
 
         missing_cols = [c for c in rename_map.values() if c not in df.columns]
         if missing_cols:
