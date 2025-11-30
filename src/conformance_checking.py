@@ -31,6 +31,7 @@ OUTPUT_REPORT = os.path.join(CONFORMANCE_PATH, "conformance_report.txt")
 # Limits to avoid runaway alignment runtime
 ALIGNMENT_MAX_TIME = 25    # seconds (global cap; aligns can explode)
 ALIGNMENT_MAX_TRACES = 20  # limit traces to keep runtime bounded
+FITNESS_FIT_EPS = 1e-6     # tolerance for treating a trace as perfectly fitting
 
 GROUP_LOGS: Dict[str, str] = {
     "adherent_high_gpa": "adherent_high_gpa.xes",
@@ -130,7 +131,8 @@ class ConformanceChecker:
             return
 
         avg_fit = sum(fitness_values) / len(fitness_values)
-        perc_fitting = 100 * sum(a.get("is_fit", False) for a in valid_align) / len(valid_align)
+        fit_count = sum(f >= (1 - FITNESS_FIT_EPS) for f in fitness_values)
+        perc_fitting = 100 * fit_count / len(fitness_values)
 
         fitness_sorted = sorted(enumerate(fitness_values), key=lambda x: x[1])
         worst_examples = fitness_sorted[: min(3, len(fitness_sorted))]
